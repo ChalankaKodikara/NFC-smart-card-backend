@@ -9,7 +9,7 @@ import Tenant from "../models/Tenant";
 export const login = async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
-
+   
     /* ===============================
        1️⃣ Validate Input
     =============================== */
