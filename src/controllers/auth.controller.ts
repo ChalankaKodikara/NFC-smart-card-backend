@@ -18,7 +18,7 @@ export const login = async (req: Request, res: Response) => {
         success: false,
         message: "Username and password are required",
       });
-    }
+    } 
 
     /* ===============================
        2️⃣ Find User
