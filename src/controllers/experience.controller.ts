@@ -2,6 +2,7 @@ import { Response } from "express";
 import mongoose from "mongoose";
 import Profile from "../models/Profile";
 import { AuthRequest } from "../middleware/auth.middleware";
+import cloudinary from "../config/cloudinary";
 
 /* =====================================================
    GET EXPERIENCES
@@ -22,16 +23,9 @@ export const getExperience = async (
 
     const profile = await Profile.findOne({ tenantId });
 
-    if (!profile) {
-      return res.json({
-        success: true,
-        data: [],
-      });
-    }
-
     return res.json({
       success: true,
-      data: profile.experiences || [],
+      data: profile?.experiences || [],
     });
   } catch (error: any) {
     return res.status(500).json({
@@ -76,8 +70,6 @@ export const upsertExperience = async (
 
     let profile = await Profile.findOne({ tenantId });
 
-    /* ================= AUTHORIZATION ================= */
-
     if (profile) {
       if (user.role !== "SUPER_ADMIN") {
         if (profile.userId.toString() !== user.id) {
@@ -89,8 +81,6 @@ export const upsertExperience = async (
       }
     }
 
-    /* ================= CREATE IF NOT EXISTS ================= */
-
     if (!profile) {
       profile = new Profile({
         tenantId,
@@ -98,8 +88,6 @@ export const upsertExperience = async (
         slug: `tenant-${tenantId}`,
       });
     }
-
-    /* ================= UPDATE EXPERIENCES ================= */
 
     profile.experiences = experiences;
 
@@ -119,7 +107,7 @@ export const upsertExperience = async (
 };
 
 /* =====================================================
-   UPLOAD LOGO
+   UPLOAD LOGO (Cloudinary)
 ===================================================== */
 export const uploadLogo = async (
   req: AuthRequest & { params: { tenantId: string } } & any,
@@ -163,11 +151,32 @@ export const uploadLogo = async (
       }
     }
 
-    const imageUrl = `/uploads/experience/${req.file.filename}`;
+    /* ================= CLOUDINARY UPLOAD ================= */
+
+    const uploadResult: any = await new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder: `casknet/${tenantId}/experience`,
+            resource_type: "image",
+            transformation: [
+              { width: 300, height: 300, crop: "fill" },
+              { quality: "auto" },
+              { fetch_format: "auto" },
+            ],
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        )
+        .end(req.file.buffer);
+    });
 
     return res.json({
       success: true,
-      url: imageUrl,
+      url: uploadResult.secure_url,
+      public_id: uploadResult.public_id,
     });
   } catch (error: any) {
     return res.status(500).json({

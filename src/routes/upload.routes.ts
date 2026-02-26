@@ -1,47 +1,73 @@
 import express from "express";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
 
 const router = express.Router();
 
-const uploadPath = path.join(__dirname, "../../uploads/profile");
-
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, uploadPath),
-  filename: (_, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  },
+/* ===============================
+   CLOUDINARY CONFIG
+================================ */
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET,
 });
 
+/* ===============================
+   MULTER MEMORY STORAGE
+================================ */
 const upload = multer({
-  storage,
-  limits: { fileSize: 2 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
 });
 
+/* ===============================
+   UPLOAD PROFILE IMAGE
+================================ */
 router.post(
   "/profile-image/:clientId",
   upload.single("image"),
-  (req: any, res) => {
-    if (!req.file) {
-      return res.status(400).json({
+  async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded",
+        });
+      }
+
+      const { clientId } = req.params;
+
+      /* ===============================
+         UPLOAD TO CLOUDINARY
+      ================================= */
+      const result: any = await new Promise((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            {
+              folder: `casknet/${clientId}/profile`,
+              resource_type: "image",
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          )
+          .end(req.file.buffer);
+      });
+
+      return res.json({
+        success: true,
+        url: result.secure_url,
+        public_id: result.public_id,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
         success: false,
-        message: "No file uploaded",
+        message: error.message,
       });
     }
-
-    const imageUrl = `/uploads/profile/${req.file.filename}`;
-
-    return res.json({
-      success: true,
-      url: imageUrl,
-    });
-  },
+  }
 );
 
 export default router;

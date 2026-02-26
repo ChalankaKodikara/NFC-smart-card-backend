@@ -9,6 +9,7 @@ export interface IPersonal {
   slogan?: string;
   bio?: string;
   profileImage?: string;
+  imagePublicId?: string; // 🔥 ADDED (for Cloudinary delete)
 }
 
 export interface IContact {
@@ -41,9 +42,9 @@ export interface ICustomSection {
 }
 
 export interface IProfile extends Document {
-  tenantId: mongoose.Types.ObjectId; // 🔥 LINK TO TENANT
-  userId: mongoose.Types.ObjectId; // 🔥 OWNER USER
-  slug: string; // PUBLIC PROFILE SLUG
+  tenantId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+  slug: string;
   personal: IPersonal;
   contact: IContact;
   social: {
@@ -65,6 +66,7 @@ const PersonalSchema = new Schema(
     slogan: { type: String, default: "" },
     bio: { type: String, default: "" },
     profileImage: { type: String, default: "" },
+    imagePublicId: { type: String, default: "" }, // 🔥 ADDED
   },
   { _id: false },
 );
